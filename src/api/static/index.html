@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FrontierAtlas - AI Intelligence Pipeline</title>
+<style>
+  :root { --bg:#0f1420; --card:#1a2233; --line:#2a3550; --text:#e8ecf5; --dim:#8b96ad; --accent:#5b8cff; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 18px 28px; border-bottom: 1px solid var(--line); display:flex; align-items:baseline; gap:14px; }
+  header h1 { font-size: 20px; } header span { color: var(--dim); font-size: 13px; }
+  .stats { display: flex; gap: 14px; padding: 20px 28px; flex-wrap: wrap; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 20px; min-width: 130px; cursor: pointer; }
+  .stat.active { border-color: var(--accent); }
+  .stat b { font-size: 24px; display: block; } .stat small { color: var(--dim); }
+  .controls { padding: 0 28px 14px; display: flex; gap: 10px; align-items: center; }
+  input[type=search] { flex: 1; max-width: 420px; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 14px; }
+  button { padding: 9px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font-size: 13px; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); }
+  main { padding: 0 28px 40px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; position: sticky; top: 0; background: var(--bg); }
+  a { color: var(--accent); text-decoration: none; }
+  .pill { padding: 2px 8px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); font-size: 11px; }
+  #status { color: var(--dim); font-size: 13px; padding: 6px 28px; }
+</style>
+</head>
+<body>
+<header><h1>FrontierAtlas</h1><span>AI intelligence ingestion pipeline</span></header>
+<div class="stats" id="stats"></div>
+<div class="controls">
+  <input type="search" id="search" placeholder="Search current tab...">
+  <button class="ghost" onclick="runPhase('phase2')">Run fresh crawl (24h)</button>
+  <button onclick="load()">Refresh</button>
+</div>
+<div id="status"></div>
+<main><table id="tbl"><thead></thead><tbody></tbody></table></main>
+<script>
+let current = 'startups';
+const VERTICALS = ['startups','products','papers','jobs','news'];
+
+function cols(kind, item) {
+  const c = item.content, s = item.source;
+  const link = (u,t) => u ? `<a href="${u}" target="_blank">${t||'source'}</a>` : '';
+  switch(kind) {
+    case 'startups': return `<td><b>${c.entityName}</b></td><td>${c.batch||''}</td><td>${(c.description||'').slice(0,120)}</td><td>${c.data&&c.data.employeeCount??''}</td><td>${link(s.url,'YC')}</td>`;
+    case 'products': return `<td><b>${c.productName}</b></td><td><span class="pill">${c.pricingModel}</span></td><td>${(c.description||'').slice(0,120)}</td><td>${link(s.url,'OpenTools')}</td>`;
+    case 'papers': return `<td><b>${c.title.slice(0,80)}</b></td><td>${(c.authors||[]).slice(0,2).join(', ')}</td><td>${c.github_stars??''}</td><td>${link(c.paper_url,'paper')} ${link(c.github_url,'code')}</td>`;
+    case 'jobs': return `<td><b>${c.title}</b></td><td>${c.company}</td><td>${c.role_family}</td><td>${c.is_remote?'Remote':(c.location||'')}</td><td>${link(c.url,'apply')}</td>`;
+    case 'news': return `<td><b>${c.headline}</b></td><td>${s.name}</td><td>${(c.published_date||'').slice(0,16)}</td><td>${link(c.url,'read')}</td>`;
+  }
+}
+const HEADERS = {
+  startups: '<tr><th>Name</th><th>Batch</th><th>Description</th><th>Employees</th><th>Source</th></tr>',
+  products: '<tr><th>Product</th><th>Pricing</th><th>Description</th><th>Source</th></tr>',
+  papers: '<tr><th>Title</th><th>Authors</th><th>Stars</th><th>Links</th></tr>',
+  jobs: '<tr><th>Role</th><th>Company</th><th>Family</th><th>Location</th><th>Link</th></tr>',
+  news: '<tr><th>Headline</th><th>Source</th><th>Published</th><th>Link</th></tr>',
+};
+
+async function loadStats() {
+  const d = await (await fetch('/api/stats')).json();
+  const el = document.getElementById('stats');
+  el.innerHTML = '';
+  for (const v of VERTICALS) {
+    const div = document.createElement('div');
+    div.className = 'stat' + (v===current?' active':'');
+    div.innerHTML = `<b>${d.counts[v]||0}</b><small>${v}</small>`;
+    div.onclick = () => { current = v; load(); loadStats(); };
+    el.appendChild(div);
+  }
+  const em = document.createElement('div');
+  em.className='stat'; em.innerHTML=`<b>${d.entity_mappings}</b><small>entity mappings</small>`;
+  el.appendChild(em);
+}
+
+async function load() {
+  const q = document.getElementById('search').value;
+  const d = await (await fetch(`/api/records/${current}?limit=100&q=${encodeURIComponent(q)}`)).json();
+  document.querySelector('#tbl thead').innerHTML = HEADERS[current];
+  document.querySelector('#tbl tbody').innerHTML =
+    d.items.map(i => `<tr>${cols(current,i)}</tr>`).join('');
+  document.getElementById('status').textContent = `${d.total} ${current} records`;
+}
+
+async function runPhase(p) {
+  document.getElementById('status').textContent = 'Crawl started...';
+  await fetch(`/api/run/${p}`, {method:'POST'});
+  setTimeout(() => { load(); loadStats(); }, 15000);
+}
+
+let t; document.getElementById('search').addEventListener('input', () => {
+  clearTimeout(t); t = setTimeout(load, 300);
+});
+loadStats(); load();
+</script>
+</body>
+</html>
