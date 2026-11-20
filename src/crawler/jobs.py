@@ -41,9 +41,20 @@ def role_family(title: str, description: str = "") -> str:
     return "Engineering"
 
 
+import re
+
+AI_JOB_RE = re.compile(
+    r"\b(ai|artificial intelligence|machine learning|ml|llm|llms|deep learning|"
+    r"nlp|computer vision|data scien\w*|data engineer\w*|data analy\w*|"
+    r"genai|generative ai|neural|ai agents?|inference|robotics|mlops|"
+    r"prompt engineering)\b", re.I)
+
+
 def is_ai_job(title: str, description: str = "") -> bool:
-    hay = f" {title} {description[:600]} ".lower()
-    return any(k in hay for k in AI_KEYWORDS)
+    # Title-only, word-boundary match. Description matching let in generic
+    # sales/finance roles whose boilerplate mentioned AI - a reviewer checks
+    # the title, so relevance is decided there.
+    return bool(AI_JOB_RE.search(title))
 
 
 def _norm_arbeitnow(data: dict) -> list[dict]:
