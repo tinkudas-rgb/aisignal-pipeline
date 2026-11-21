@@ -91,7 +91,7 @@ class LLMTier:
 class GeminiFlashTier(LLMTier):
     name = "gemini-flash"
     env_key = "GEMINI_API_KEY"
-    MODEL = "gemini-2.0-flash"
+    MODEL = "gemini-3.5-flash"
 
     async def complete(self, prompt: str) -> tuple[int, str]:
         url = ("https://generativelanguage.googleapis.com/v1beta/models/"
