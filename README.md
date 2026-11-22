@@ -74,7 +74,7 @@ src/
   api/static/index.html
 tests/                 36 tests: dates, entities, chunking, backoff, dedupe, API
 scripts/               db server, phase runners, CSV export, URL validator
-architecture.pdf       3-page design doc (Phase VI)
+architecture.pdf       2-page design doc, max 3 allowed (Phase VI)
 ```
 
 ## Data quality guarantees
